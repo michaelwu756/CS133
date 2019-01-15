@@ -1,0 +1,59 @@
+\documentclass[12pt]{article}
+\begin{document}
+\title{Computer Science 133, Homework 1}
+\date{January 17th, 2019}
+\author{Michael Wu\\UID: 404751542}
+\maketitle
+
+\section*{Problem 1}
+
+My phone has 4 cores, and the processor is a Qualcomm Snapdragon 820 MSM8996. My computer has 4 cores, and
+the processor is an Intel Core i7-4700MQ CPU @ 2.40GHz.
+
+\section*{Problem 2}
+
+Dennard Scaling refers to the phenomenon of the power density of a processor staying constant as transistor
+size decreases. So smaller transistors would consume the same amount of power on a chip of a given size.
+This was partially due to voltage levels across the transistors decreasing. It broke down because current
+leakage would occur as the voltage became smaller, so voltage could no longer scale. As a side effect,
+processor frequencies could not be increased without increasing power consumption by too much.
+
+\section*{Problem 3}
+
+\begin{center}
+    \begin{tabular}{c|c}
+        System & Efficiency (Rmax/Power)\\
+        \hline
+        Summit & 14.6683\\
+        Sierra & 12.72385\\
+        Sunway TaihuLight & 6.051304\\
+        Tianhe-2A & 3.324559\\
+        Piz Daint & 8.905201\\
+        Trinity & 2.660161\\
+        AI Bridging Cloud Infrastructure & 12.05579\\
+        SuperMUC-NG & N/A\\
+        Titan & 2.14277\\
+        Sequoia & 2.176578
+    \end{tabular}
+\end{center}
+The top 3 most power efficient computers are Summit, Sierra, and AI Bridging Cloud Infrastructure.
+
+\section*{Problem 4}
+
+An example of a application in which we don't know the number of tasks ahead of time is an event queue.
+In an event queue, we must wait for tasks to come in during the lifetime of the event queue.
+
+\section*{Problem 5}
+
+We can write the code as follows.
+\begin{verbatim}
+i=1;
+r=d[0];
+for (i=0; i<=SIZE; i++) {
+  r*=v[i];
+}
+\end{verbatim}
+Then each loop iteration only needs to load then multiply. There is no data dependency, and this loop
+produces the same result as the original while reducing the initiation interval to 1.
+
+\end{document}
