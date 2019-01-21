@@ -29,7 +29,7 @@ void GemmParallelBlocked(const float a[kI][kK], const float b[kK][kJ],
     int iBlocks = (kI + n - 1)/n;
     int jBlocks = (kJ + n - 1)/n;
     int kBlocks = (kK + n - 1)/n;
-#pragma omp for schedule(static, kBlocks)
+#pragma omp for
     for (int block = 0; block < iBlocks * jBlocks * kBlocks; ++block) {
       int ii = block / (kBlocks * jBlocks);
       int jj = (block / kBlocks) % jBlocks;
@@ -37,19 +37,18 @@ void GemmParallelBlocked(const float a[kI][kK], const float b[kK][kJ],
       for (int i = ii * n; i < ii * n + n && i < kI; ++i) {
         for (int j = jj * n; j < jj * n + n && j < kJ; ++j) {
           for (int k = kk * n; k < kk * n + n && k < kK; ++k) {
-            cTemp[i*kJ+j] += a[i][k] * bT[j*kK+k];
+            cTemp[i * kJ + j] += a[i][k] * bT[j * kK + k];
           }
         }
       }
     }
 #pragma omp critical
-    {
-      for (int i=0; i<kI; ++i) {
-        for (int j=0; j<kJ; ++j) {
-          c[i][j]+=cTemp[i*kJ+j];
-	}
+    for (int i = 0; i < kI; ++i) {
+      for (int j = 0; j < kJ; ++j) {
+        c[i][j] += cTemp[i * kJ + j];
       }
     }
     free(cTemp);
   }
+  free(bT);
 }
