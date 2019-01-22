@@ -19,5 +19,5 @@ tar: omp.cpp omp-blocked.cpp lab1-report.pdf
 	@rm -rf $(UID)
 	@mkdir $(UID)
 	@cp $^ $(UID)
-	tar czvf lab1-$(UID).tar.gz $(UID)
+	tar czvf $(UID).tar.gz $(UID)
 	@rm -rf $(UID)

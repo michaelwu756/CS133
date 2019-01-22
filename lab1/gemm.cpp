@@ -42,7 +42,7 @@ int Diff(const float c1[kI][kJ], const float c2[kI][kJ]) {
     }
   }
   diff /= kI * kJ;
-  if (diff > 1e-7f) {
+  if (diff > 1e-5f) {
     clog << "Diff: " << diff << endl;
     return 1;
   }
