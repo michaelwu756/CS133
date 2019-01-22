@@ -10,7 +10,7 @@
 
 
 void GemmParallelBlocked(const float a[kI][kK], const float b[kK][kJ],
-			 float c[kI][kJ]) {
+                         float c[kI][kJ]) {
   int n = 256;
 #pragma omp parallel for
   for (int i = 0; i < kI; ++i) {
