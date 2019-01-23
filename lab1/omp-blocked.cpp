@@ -22,6 +22,11 @@ void GemmParallelBlocked(const float a[kI][kK], const float b[kK][kJ],
     int row = i / kK;
     int col = i % kK;
     aFlat[row * kK + col] = a[row][col];
+  }
+#pragma omp parallel for
+  for (int i = 0; i < kK * kJ; ++i) {
+    int row = i / kJ;
+    int col = i % kJ;
     bFlat[row * kJ + col] = b[row][col];
   }
 #pragma omp parallel
