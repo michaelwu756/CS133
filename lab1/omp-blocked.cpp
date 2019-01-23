@@ -34,24 +34,24 @@ void GemmParallelBlocked(const float a[kI][kK], const float b[kK][kJ],
 #pragma omp for
     for (int block = 0; block < iBlocks * jBlocks * kBlocks; ++block) {
       int ii = block / (kBlocks * jBlocks);
-      int jj = (block / kBlocks) % jBlocks;
-      int kk = block % kBlocks;
+      int kk = (block / jBlocks) % kBlocks;
+      int jj = block % jBlocks;
       for (int i = 0; i < n; ++i) {
         int iVal = ii * n + i;
-        for (int j = 0; j < n; j+=16) {
-          int jVal = jj * n + j;
-          float* cBase = cTemp + iVal * kJ + jVal;
-          simd3 = _mm512_load_ps(cBase);
-          for (int k = 0; k < n; ++k) {
-            int kVal = kk * n + k;
-            float* aBase = aFlat + iVal * kK + kVal;
+        for (int k = 0; k < n; ++k) {
+          int kVal = kk * n + k;
+          float* aBase = aFlat + iVal * kK + kVal;
+          simd1 = _mm512_set1_ps(*aBase);
+          for (int j = 0; j < n; j+=16) {
+            int jVal = jj * n + j;
+            float* cBase = cTemp + iVal * kJ + jVal;
             float* bBase = bFlat + kVal * kJ + jVal;
-            simd1 = _mm512_set1_ps(*aBase);
+            simd3 = _mm512_load_ps(cBase);
             simd2 = _mm512_load_ps(bBase);
             simd4 = _mm512_mul_ps(simd1, simd2);
             simd3 = _mm512_add_ps(simd3, simd4);
+            _mm512_store_ps(cBase, simd3);
           }
-          _mm512_store_ps(cBase, simd3);
         }
       }
     }
