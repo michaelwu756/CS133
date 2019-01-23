@@ -2,7 +2,6 @@
 
 #include <cstring>
 #include <stdlib.h>
-#include <math.h>
 #include <immintrin.h>
 
 #include "gemm.h"
