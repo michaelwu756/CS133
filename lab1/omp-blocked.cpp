@@ -32,6 +32,9 @@ void GemmParallelBlocked(const float a[kI][kK], const float b[kK][kJ],
 #pragma omp parallel
   {
     float* cTemp = (float*) aligned_alloc(64, kI * kJ * sizeof(float));
+    for(int i = 0; i < kI * kJ; ++i) {
+      cTemp[i] = 0;
+    }
     __m512 simd1, simd2, simd3, simd4;
     int iBlocks = (kI + n - 1)/n;
     int jBlocks = (kJ + n - 1)/n;
