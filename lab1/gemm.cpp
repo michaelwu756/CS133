@@ -1,8 +1,10 @@
+#include <cmath>
 #include <cstring>
 
 #include <chrono>
 #include <iostream>
 #include <random>
+#include <vector>
 
 #include "gemm.h"
 
@@ -11,13 +13,30 @@ using std::chrono::microseconds;
 using std::chrono::steady_clock;
 using std::clog;
 using std::endl;
+using std::vector;
 
+void GemmBaseline(const vector<vector<float>>& a,
+                  const vector<vector<float>>& b,
+                  vector<vector<float>>* c);
 void GemmBaseline(const float a[kI][kK], const float b[kK][kJ],
-                  float c[kI][kJ]);
-void GemmParallel(const float a[kI][kK], const float b[kK][kJ],
-                  float c[kI][kJ]);
-void GemmParallelBlocked(const float a[kI][kK], const float b[kK][kJ],
-                         float c[kI][kJ]);
+                  float c[kI][kJ]) {
+  vector<vector<float>> a_vec(kI);
+  vector<vector<float>> b_vec(kK);
+  vector<vector<float>> c_vec(kI);
+  for (int i = 0; i < kI; ++i) {
+    a_vec[i].resize(kK);
+    c_vec[i].resize(kJ);
+    std::memcpy(a_vec[i].data(), a[i], sizeof(float) * kK);
+  }
+  for (int k = 0; k < kK; ++k) {
+    b_vec[k].resize(kJ);
+    std::memcpy(b_vec[k].data(), b[k], sizeof(float) * kJ);
+  }
+  GemmBaseline(a_vec, b_vec, &c_vec);
+  for (int i = 0; i < kI; ++i) {
+    std::memcpy(c[i], c_vec[i].data(), sizeof(float) * kJ);
+  }
+}
 
 void GemmSequential(const float a[kI][kK], const float b[kK][kJ],
                     float c[kI][kJ]) {
@@ -33,16 +52,36 @@ void GemmSequential(const float a[kI][kK], const float b[kK][kJ],
   }
 }
 
+void Init(float a[kI][kK], float b[kK][kJ]) {
+  clog << "Problem size: " << kI << " x " << kK << " x " <<  kJ << endl;
+
+  std::default_random_engine generator(
+      steady_clock::now().time_since_epoch().count());
+  std::uniform_real_distribution<float> distribution(0.f, 1.f);
+
+  clog << "Initialize matrices a and b\n";
+  for (int i = 0; i < kI; ++i) {
+    for (int k = 0; k < kK; ++k) {
+      a[i][k] = distribution(generator);
+    }
+  }
+  for (int k = 0; k < kK; ++k) {
+    for (int j = 0; j < kJ; ++j) {
+      b[k][j] = distribution(generator);
+    }
+  }
+}
+
 int Diff(const float c1[kI][kJ], const float c2[kI][kJ]) {
   double diff = 0.;
-  auto square = [](float x) -> float { return x * x; };
+  auto square = [](double x) -> double { return x * x; };
   for (int i = 0; i < kI; ++i) {
     for (int j = 0; j < kJ; ++j) {
-      diff += square(float(c1[i][j]) - c2[i][j]);
+      diff += square(double(c1[i][j]) - c2[i][j]);
     }
   }
   diff /= kI * kJ;
-  if (diff > 1e-5f) {
+  if (! std::isfinite(diff) || diff > 1e-5) {
     clog << "Diff: " << diff << endl;
     return 1;
   }
@@ -59,78 +98,4 @@ void Benchmark(
   float gflops = 2.0 * kI * kJ * kK / (run_time_us * 1e3);
   clog << "Time: " << run_time_us * 1e-6 << " s\n";
   clog << "Perf: " << gflops << " GFlops\n";
-}
-
-int main(int argc, char** argv) {
-  // Allocate memory on heap to avoid stack overflow.
-  static float a[kI][kK];
-  static float b[kK][kJ];
-  static float c_base[kI][kJ];
-  static float c[kI][kJ];
-
-  bool sequential = false;
-  bool parallel = false;
-  bool parallel_blocked = false;
-  for (int i = 0; i < argc; ++i) {
-    if (strcmp(argv[i], "sequential") == 0) {
-      sequential = true;
-    }
-    if (strcmp(argv[i], "parallel") == 0) {
-      parallel = true;
-    }
-    if (strcmp(argv[i], "parallel-blocked") == 0) {
-      parallel_blocked = true;
-    }
-  }
-
-  clog << "Problem size: " << kI << " x " << kK << " x " <<  kJ << endl;
-
-  std::default_random_engine generator(
-      steady_clock::now().time_since_epoch().count());
-  std::uniform_real_distribution<float> distribution(0.f, 1.f);
-
-  clog << "Initialize matrices a and b\n";
-  for (int i=0; i < kI; ++i) {
-    for (int k=0; k < kK; ++k) {
-      a[i][k] = distribution(generator);
-    }
-  }
-  for (int k=0; k < kK; ++k) {
-    for (int j=0; j < kJ; ++j) {
-      b[k][j] = distribution(generator);
-    }
-  }
-
-  GemmBaseline(a, b, c_base);
-
-  if (sequential) {
-    clog << "\nRun sequential GEMM with OpenMP\n";
-    Benchmark(&GemmSequential, a, b, c);
-    if (Diff(c_base, c) != 0) {
-      clog << "Baseline failed\n";
-      return 2;
-    }
-  }
-
-  bool fail = false;
-  if (parallel) {
-    clog << "\nRun parallel GEMM with OpenMP\n";
-    Benchmark(&GemmParallel, a, b, c);
-    if (Diff(c_base, c) != 0) {
-      fail = true;
-    }
-  }
-
-  if (parallel_blocked) {
-    clog << "\nRun blocked parallel GEMM with OpenMP\n";
-    Benchmark(&GemmParallelBlocked, a, b, c);
-    if (Diff(c_base, c) != 0) {
-      fail = true;
-    }
-  }
-
-  if (fail) {
-    return 1;
-  }
-  return 0;
 }
