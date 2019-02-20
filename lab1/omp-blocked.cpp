@@ -10,7 +10,9 @@
 
 void GemmParallelBlocked(const float a[kI][kK], const float b[kK][kJ],
                          float c[kI][kJ]) {
-  int n = 128;
+  int nI = 64;
+  int nJ = 1024;
+  int nK = 8;
 #pragma omp parallel for
   for (int i = 0; i < kI; ++i) {
     std::memset(c[i], 0, sizeof(float) * kJ);
@@ -35,30 +37,37 @@ void GemmParallelBlocked(const float a[kI][kK], const float b[kK][kJ],
     for(int i = 0; i < kI * kJ; ++i) {
       cTemp[i] = 0;
     }
-    __m512 simd1, simd2, simd3, simd4;
-    int iBlocks = (kI + n - 1)/n;
-    int jBlocks = (kJ + n - 1)/n;
-    int kBlocks = (kK + n - 1)/n;
+    int iBlocks = (kI + nI - 1)/nI;
+    int jBlocks = (kJ + nJ - 1)/nJ;
+    int kBlocks = (kK + nK - 1)/nK;
 #pragma omp for
-    for (int block = 0; block < iBlocks * jBlocks * kBlocks; ++block) {
-      int ii = block / (kBlocks * jBlocks);
-      int kk = (block / jBlocks) % kBlocks;
-      int jj = block % jBlocks;
-      for (int i = 0; i < n; ++i) {
-        int iVal = ii * n + i;
-        for (int k = 0; k < n; ++k) {
-          int kVal = kk * n + k;
-          float* aBase = aFlat + iVal * kK + kVal;
-          simd1 = _mm512_set1_ps(*aBase);
-          for (int j = 0; j < n; j+=16) {
-            int jVal = jj * n + j;
-            float* cBase = cTemp + iVal * kJ + jVal;
-            float* bBase = bFlat + kVal * kJ + jVal;
-            simd3 = _mm512_load_ps(cBase);
-            simd2 = _mm512_load_ps(bBase);
-            simd4 = _mm512_mul_ps(simd1, simd2);
-            simd3 = _mm512_add_ps(simd3, simd4);
-            _mm512_store_ps(cBase, simd3);
+    for (int ii = 0; ii < iBlocks; ++ii){
+      for (int jj = 0; jj < jBlocks; ++jj){
+        for (int kk = 0; kk < kBlocks; ++kk){
+          for (int i = 0; i < nI; ++i) {
+            int iVal = ii * nI + i;
+            for (int k = 0; k < nK; ++k) {
+              int kVal = kk * nK + k;
+              for (int j = 0; j < nJ; j+=16) {
+                int jVal = jj * nJ + j;
+                cTemp[iVal * kJ + jVal + 0] += aFlat[iVal * kK + kVal] * bFlat[kVal * kJ + jVal + 0];
+                cTemp[iVal * kJ + jVal + 1] += aFlat[iVal * kK + kVal] * bFlat[kVal * kJ + jVal + 1];
+                cTemp[iVal * kJ + jVal + 2] += aFlat[iVal * kK + kVal] * bFlat[kVal * kJ + jVal + 2];
+                cTemp[iVal * kJ + jVal + 3] += aFlat[iVal * kK + kVal] * bFlat[kVal * kJ + jVal + 3];
+                cTemp[iVal * kJ + jVal + 4] += aFlat[iVal * kK + kVal] * bFlat[kVal * kJ + jVal + 4];
+                cTemp[iVal * kJ + jVal + 5] += aFlat[iVal * kK + kVal] * bFlat[kVal * kJ + jVal + 5];
+                cTemp[iVal * kJ + jVal + 6] += aFlat[iVal * kK + kVal] * bFlat[kVal * kJ + jVal + 6];
+                cTemp[iVal * kJ + jVal + 7] += aFlat[iVal * kK + kVal] * bFlat[kVal * kJ + jVal + 7];
+                cTemp[iVal * kJ + jVal + 8] += aFlat[iVal * kK + kVal] * bFlat[kVal * kJ + jVal + 8];
+                cTemp[iVal * kJ + jVal + 9] += aFlat[iVal * kK + kVal] * bFlat[kVal * kJ + jVal + 9];
+                cTemp[iVal * kJ + jVal + 10] += aFlat[iVal * kK + kVal] * bFlat[kVal * kJ + jVal + 10];
+                cTemp[iVal * kJ + jVal + 11] += aFlat[iVal * kK + kVal] * bFlat[kVal * kJ + jVal + 11];
+                cTemp[iVal * kJ + jVal + 12] += aFlat[iVal * kK + kVal] * bFlat[kVal * kJ + jVal + 12];
+                cTemp[iVal * kJ + jVal + 13] += aFlat[iVal * kK + kVal] * bFlat[kVal * kJ + jVal + 13];
+                cTemp[iVal * kJ + jVal + 14] += aFlat[iVal * kK + kVal] * bFlat[kVal * kJ + jVal + 14];
+                cTemp[iVal * kJ + jVal + 15] += aFlat[iVal * kK + kVal] * bFlat[kVal * kJ + jVal + 15];
+              }
+            }
           }
         }
       }
