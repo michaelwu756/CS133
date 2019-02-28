@@ -1,4 +1,3 @@
-#define MAX(a,b) (((a)>(b))?(a):(b))
 __constant int kNum = 256;
 __constant int kKernel = 5;
 __constant int kImSize = 224;
