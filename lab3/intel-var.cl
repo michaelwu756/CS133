@@ -21,7 +21,7 @@ void CnnKernel(__global const float* input, __global const float* weight,
   float C[16];
   for (int i = ii * kNum / N; i < (ii + 1) * kNum / N; ++i) {
     for (int h = 0; h < kOutImSize; ++h) {
-      for (int w = 0; h < kOutImSize / 4; ++w) {
+      for (int w = 0; w < kOutImSize / 4; ++w) {
         C[ 0] = bias[i];
         C[ 1] = bias[i];
         C[ 2] = bias[i];
