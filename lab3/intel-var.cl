@@ -1,4 +1,5 @@
 #define N 1
+#define M 1
 __constant int kNum = 256;
 __constant int kKernel = 5;
 __constant int kImSize = 224;
@@ -8,7 +9,8 @@ __constant int kOutImSize = 112;
 __kernel
 void CnnKernel(__global const float* input, __global const float* weight,
                __global const float* bias, __global float* output) {
-  int ii = get_global_id(0);
+  int ii = get_global_id(0) % N;
+  int hh = get_global_id(0) / N;
 
   int nk2 = kNum * kKernel * kKernel;
   int k2 = kKernel * kKernel;
@@ -20,7 +22,7 @@ void CnnKernel(__global const float* input, __global const float* weight,
 
   float C[16];
   for (int i = ii * kNum / N; i < (ii + 1) * kNum / N; ++i) {
-    for (int h = 0; h < kOutImSize; ++h) {
+    for (int h = hh * kOutImSize / M; h < (hh + 1) * kOutImSize / M; ++h) {
       for (int w = 0; w < kOutImSize; w += 4) {
         C[ 0] = bias[i];
         C[ 1] = bias[i];
