@@ -21,7 +21,7 @@ void CnnKernel(__global const float* input, __global const float* weight,
   float C[16];
   for (int i = ii * kNum / N; i < (ii + 1) * kNum / N; ++i) {
     for (int h = 0; h < kOutImSize; ++h) {
-      for (int w = 0; w < kOutImSize / 4; ++w) {
+      for (int w = 0; w < kOutImSize; w += 4) {
         C[ 0] = bias[i];
         C[ 1] = bias[i];
         C[ 2] = bias[i];
@@ -64,7 +64,7 @@ void CnnKernel(__global const float* input, __global const float* weight,
 
         output[i * o2 + h * o + w    ] = max(0.f, max(
                                                       max(C[ 0], C[ 1]),
-                                                      max(C[ 8], C[9])));
+                                                      max(C[ 8], C[ 9])));
         output[i * o2 + h * o + w + 1] = max(0.f, max(
                                                       max(C[ 2], C[ 3]),
                                                       max(C[10], C[11])));
