@@ -22,7 +22,7 @@ vadd: opencl.cpp vadd.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $(filter %.cpp %.a %.o, $^) $(LDFLAGS)
 
 CXXFLAGS = -std=c++11 -O3 -fopenmp \
-	   -fno-loop-interchange -fno-loop-unroll-and-jam -march=native
+	   -fno-loop-interchange -fno-loop-unroll-and-jam
 
 clang-tidy: $(SRCS)
 	clang-tidy $(filter %.cpp, $^) -- -Wall
