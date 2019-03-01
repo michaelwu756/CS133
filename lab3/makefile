@@ -39,7 +39,7 @@ $(UID).tar.gz: $(REQUIRED_FILES)
 	tar czvf $(UID).tar.gz $(UID)
 	@rm -rf $(UID)
 
-check: $(UID).tar.gz
-	@tar tf $^ $(addprefix $(UID)/, $(REQUIRED_FILES))
+check:
+	@tar tf $(UID).tar.gz $(addprefix $(UID)/, $(REQUIRED_FILES))
 
 LDFLAGS += -lOpenCL
