@@ -21,7 +21,8 @@ My previous code was unrolled 4 times since this improved performance due to vec
 this optimization so that each work item calculated one output element, since this would be more suited for a GPU.
 I changed this because GPUs have many more execution lanes than CPUs. Then I tuned the work group size so
 that the GPU could execute the most number of calculations in parallel. I found that the dimensions
-\(4\times 1\times 8\) gave me a speed of about \(310\) GFlops.
+\(4\times 1\times 8\) gave me a speed of about \(310\) GFlops. I had to run about three times in a row to achieve this,
+since it seems like I get slower speeds due to a cold cache on the first and second runs.
 
 \section{Optimizations}
 
