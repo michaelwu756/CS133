@@ -13,7 +13,7 @@ __kernel __attribute__((reqd_work_group_size(1, 1, 1)))
 void CnnKernel(__constant float* input, __constant float* weight,
                __constant float* bias, __global float* output) {
   float output_buf[kImSize][kImSize]
-  __attribute__((xcl_array_partition(cyclic, 16, 1)))
+  __attribute__((xcl_array_partition(cyclic, 8, 1)))
   __attribute__((xcl_array_partition(cyclic, 2, 2)))
   ;
 
