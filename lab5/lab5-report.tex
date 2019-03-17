@@ -1,0 +1,163 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath}
+\begin{document}
+\title{Computer Science 133, Lab 5}
+\date{March 18th, 2019}
+\author{Michael Wu\\UID: 404751542}
+\maketitle
+
+\section{Parallelization Strategy}
+
+In order to parallelize this code, I first began by writing a working version by comparing
+the sample code to the sequential code. The parallelized sections that were provided to us
+essentially allows us to multiply an entire \(5\times5\) section of the weight array in parallel.
+It also pipelines each weight layer multiplication. Additionally, it provides code for
+pipelining and unrolled the loading of the input array. So I simply had to write code to
+load the bias value and store the output value using the ReLU function and max pooling.
+I wrapped the provided pipelined code inside larger loops to ensure that the kernel
+iterates through the entire convolution correctly. After this part I achieved a speed
+of approximately \(6\) GFlops.
+
+In order to optimize my code, I investigated the performance summary
+and found that the majority of the computation time was spent in the loading and convolution
+steps. So I focused on these sections and I left the bias and output calculation sections
+to be sequential. I unrolled the convolution step by 16 times and partitioned the output and input
+buffers appropriately so that they could be accessed in parallel. I was able to reduce the latency of
+the convolution step by 16 times while maintaining an initiation interval of 1. Any additional
+unrolling and partitioning resulted in a synthesis time that was too long. I achieved slightly less
+than double the speed in my overall execution time after performing these actions.
+
+Next I turned my attention to the loading step, since this was the slowest operation after I optimized
+the convolution. I found that I could only unroll the loading 4 times before the initiation interval began
+increasing. For example, when I unrolled 12 times my initiation interval became 3 and I achieved the
+same speed. I believe this limitation is due to a memory bottleneck. Since the load operation reads from
+global memory, the available memory units limit my parallelism. This optimization gave me approximately
+4 times the speed for the following final throughput.
+\[\frac{256^2\times 224^2\times 5^2\times 2\times 250}{1109859329\times 10^3}=37 \text{ GFlops}\]
+I obtained a sequential version speed of 11.5451 GFlops in the previous labs
+so this represents a 3.2 times speedup over the sequential version.
+
+Lastly, I unsuccessfully attempted to use vector types and the dataflow pragma in order to further
+increase my performance. I had trouble with these methods and could not find a working solution.
+
+\section{Details of Optimizations}
+
+I declared my temporary buffers using the following code.
+\begin{verbatim}
+float output_buf[kImSize][kImSize]
+__attribute__((xcl_array_partition(cyclic, 8, 1)))
+__attribute__((xcl_array_partition(cyclic, 2, 2)))
+;
+
+float input_buf[kInImSize][kInImSize + kKernel - 1][kKernel]
+__attribute__((xcl_array_partition(cyclic, 8, 1)))
+__attribute__((xcl_array_partition(cyclic, 2, 2)))
+__attribute__((xcl_array_partition(complete, 3)))
+;
+\end{verbatim}
+These were the minimum number of memory partitions necessary to allow for my unrolling to work.
+Then I unrolled the loading stage in the following fashion.
+\scriptsize
+\begin{verbatim}
+__attribute__((xcl_pipeline_loop))
+for (int w = 0; w < kInImSize; w+=4) {
+  for (int q = 0; q < kKernel; q++) { //make kKernel copy of input(j,h,w)
+    input_buf[h][w     - q + kKernel - 1][q] = input(j, h, w    );
+    input_buf[h][w + 1 - q + kKernel - 1][q] = input(j, h, w + 1);
+    input_buf[h][w + 2 - q + kKernel - 1][q] = input(j, h, w + 2);
+    input_buf[h][w + 3 - q + kKernel - 1][q] = input(j, h, w + 3);
+  }
+}
+\end{verbatim}
+\normalsize
+I unrolled the convolution stage in the following fashion.
+\scriptsize
+\begin{verbatim}
+for (int h = 0; h < kImSize; h+=8) {
+  conv:
+  __attribute__((xcl_pipeline_loop))
+  for (int w = 0; w < kImSize; w+=2) { //pipelined loop
+    float tmp0 = 0;
+    // ...
+    float tmp15 = 0;
+    for (int p = 0; p < kKernel; p++) {  // unrolled loop
+      for (int q = 0; q < kKernel; q++) {  //unrolled loop
+        tmp0 += //will be synthesized into tree reduction
+          weight_buf[p][q] * input_buf[h     + p][w + kKernel - 1][q];
+        // ...
+        tmp7 +=
+          weight_buf[p][q] * input_buf[h + 7 + p][w + kKernel - 1][q];
+        tmp8 +=
+          weight_buf[p][q] * input_buf[h     + p][w + kKernel    ][q];
+        // ...
+        tmp15 +=
+          weight_buf[p][q] * input_buf[h + 7 + p][w + kKernel    ][q];
+      }
+    }
+    output_buf[h    ][w    ] += tmp0; //store reduction result
+    // ...
+    output_buf[h + 7][w    ] += tmp7;
+    output_buf[h    ][w + 1] += tmp8;
+    // ...
+    output_buf[h + 7][w + 1] += tmp15;
+  }
+}
+\end{verbatim}
+\normalsize
+
+\section{Differences from Previous Labs}
+
+My optimization strategies for this lab differs from the previous labs because in the previous labs the
+parallelism is achieved through the OpenCL framework an a fixed processor architecture. In this lab
+I do not use any additional work items and instead optimize my architecture for the computation.
+This means that I tried to parallelize the innermost loops by adding more memory units and arithmetic
+units, while in the previous labs I mainly tried to parallelize the outermost loops. I did do some
+unrolling in lab 3, but this was to fit my kernel to the CPU architecture. Otherwise I tried to keep
+the kernel small so it could execute on different outer loop iterations.
+
+\section{Resource Usage}
+
+The FPGA resource usage is shown in the following table.
+\begin{center}
+    \begin{tabular}{c|cccc}
+        Name & BRAM\_18K & DSP48E & FF & LUT\\
+        \hline
+        DSP & - & 1 & - & -\\
+        Expression & - & 0 & 0 & 10332\\
+        FIFO & - & - & - & -\\
+        Instance & 30 & 2032 & 219835 & 159833\\
+        Memory & 768 & - & 0 & 0\\
+        Multiplexer & - & - & - & 3971\\
+        Register & 16 & - & 50124 & 15653\\
+        \hline
+        Total & 814 & 2033 & 269959 & 189789\\
+        Available & 4320 & 6840 & 2364480 & 1182240\\
+        \hline
+        Utilization(\%) & 18 & 29 & 11 & 16
+    \end{tabular}
+\end{center}
+The DSP48E resource has been used the most in terms of percentage. This makes sense since these components are used
+for the multiplication and addition of floating point values.
+
+To calculate the utilization, I would take a look at the array sizes and find that the input buffer has size
+\(228\times232\times5=264480\), the output buffer has size \(224\times 224=50176\), and the weight matrix has
+size \(5\times 5=25\). Since the size of a float is 4 bytes, this means that the kernel uses the following amount
+of memory.
+\[4\times(264480+52176+25)=1266724 \text{ Bytes}\]
+Theoretically the minimum number of 18Kb BRAM blocks that I would need is given by the following calculation.
+\[\frac{1266724}{18\times1024}=69\]
+
+When looking at my loop I see that there are 16 floating point multiplications in the inner loop. After unrolling
+the \(p\) and \(q\) loops, this results in a total of \(16\times25=400\) floating point multiplications being done
+in parallel. This would be the minimum number of DSP units necessary. In reality the synthesis uses more of both
+the memory and DSP units in order to allow for shorter critical paths and parallel accesses in order to reduce latency.
+That is why the shown resource utilization is much higher than the minimum.
+
+\section{Challenges}
+
+Some challenges I faced were the long synthesis times and understanding the structure of the FPGA memory. I was
+stuck with optimizing the load step for a long time since I thought that the local memory was lowering the initiation
+interval whenever I unrolled more than 4 times. Sometimes I would try to synthesize a loop that would be too large to fit
+on the FPGA and the synthesis would hang.
+
+\end{document}
