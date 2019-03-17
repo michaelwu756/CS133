@@ -40,10 +40,10 @@ dontrunme: cnn $(OPENCL_SOURCE) cnn.$(TARGET).$(DSA).xclbin
 cnn: $(SRCS)
 	$(CXX) $(CXXFLAGS) -o $@ $(filter %.cpp %.a %.o, $^) $(LDFLAGS)
 
-CXXFLAGS := $(subst -fno-loop-unroll-and-jam,,$(subst -march=native,,$(CXXFLAGS)))
-LDFLAGS += -lOpenCL
 CXXFLAGS = -std=c++11 -O3 -fopenmp \
            -fno-loop-interchange -fno-loop-unroll-and-jam -march=native
+CXXFLAGS := $(subst -fno-loop-unroll-and-jam,,$(subst -march=native,,$(CXXFLAGS)))
+LDFLAGS += -lOpenCL
 
 clang-tidy: $(SRCS)
 	clang-tidy $(filter %.cpp, $^) -- -Wall
