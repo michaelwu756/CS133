@@ -26,7 +26,6 @@ void CnnKernel(__constant float* input, __constant float* weight,
   for (int i = 0; i < kNum; i++) {
     //copy bias here
     load_bias:
-    __attribute__((xcl_pipeline_loop))
     for (int h = 0; h < kImSize; h++) {
 	for (int w = 0; w < kImSize; w++) {
 	  output_buf[h][w] = bias[i];
@@ -41,10 +40,10 @@ void CnnKernel(__constant float* input, __constant float* weight,
 	  weight_buf[p][q] = weight(i, j, p, q);
 	}
       }
-      //input load loop
-      load_in:
-      __attribute__((xcl_pipeline_loop))
       for (int h = 0; h < kInImSize; h++) {
+	//input load loop
+        load_in:
+	__attribute__((xcl_pipeline_loop))
 	for (int w = 0; w < kInImSize; w++) {
 	  for (int q = 0; q < kKernel; q++) { //make kKernel copy of input(j,h,w)
 	    input_buf[h][w - q + kKernel - 1][q] = input(j, h, w);
@@ -52,27 +51,24 @@ void CnnKernel(__constant float* input, __constant float* weight,
 	}
       }
       
-      for (int hh = 0; hh < kImSize / 16; hh++) {
+      for (int h = 0; h < kImSize; h++) {
 	//convolution loop
         conv:
 	__attribute__((xcl_pipeline_loop))
-	for (int h = 0; h < 16; h++) {
-	  for (int w = 0; w < kImSize; w++) { //pipelined loop
-	    float tmp = 0;
-	    for (int p = 0; p < kKernel; p++) {  // unrolled loop
-	      for (int q = 0; q < kKernel; q++) {  //unrolled loop
-		tmp += //will be synthesized into tree reduction
-		  weight_buf[p][q] * input_buf[hh * 16 + h + p][w + kKernel - 1][q];
-	      }
+	for (int w = 0; w < kImSize; w++) { //pipelined loop
+	  float tmp = 0;
+	  for (int p = 0; p < kKernel; p++) {  // unrolled loop
+	    for (int q = 0; q < kKernel; q++) {  //unrolled loop
+	      tmp += //will be synthesized into tree reduction
+		weight_buf[p][q] * input_buf[h + p][w + kKernel - 1][q];
 	    }
-	    output_buf[hh * 16 + h][w] += tmp; //store reduction result
 	  }
+	  output_buf[h][w] += tmp; //store reduction result
 	}
       }
     }
     //copy output here
     store:
-    __attribute__((xcl_pipeline_loop))
     for (int h = 0; h < kOutImSize; h++) {
       for (int w = 0; w < kOutImSize; w++) {
 	output(i, h, w) =  max(0, max(
