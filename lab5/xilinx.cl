@@ -18,7 +18,7 @@ void CnnKernel(__constant float* input, __constant float* weight,
 
   float input_buf[kInImSize][kInImSize + kKernel - 1][kKernel] //buffer of input
   __attribute__((xcl_array_partition(cyclic, 8, 1)))  // cyclic partition factor of 8 in dim 1 of input_buf
-  __attribute__((xcl_array_partition(cyclic, 6, 2)))  // cyclic partition factor of 2 in dim 2 of input_buf
+  __attribute__((xcl_array_partition(cyclic, 2, 2)))  // cyclic partition factor of 2 in dim 2 of input_buf
   __attribute__((xcl_array_partition(complete, 3))) // complete partitioning for dim3 of input_buf
   ;
 
@@ -48,20 +48,12 @@ void CnnKernel(__constant float* input, __constant float* weight,
 	//input load loop
         load_in:
 	__attribute__((xcl_pipeline_loop))
-	for (int w = 0; w < kInImSize; w+=12) {
+	for (int w = 0; w < kInImSize; w+=4) {
 	  for (int q = 0; q < kKernel; q++) { //make kKernel copy of input(j,h,w)
-	    input_buf[h][w      - q + kKernel - 1][q] = input(j, h, w     );
-	    input_buf[h][w +  1 - q + kKernel - 1][q] = input(j, h, w +  1);
-	    input_buf[h][w +  2 - q + kKernel - 1][q] = input(j, h, w +  2);
-	    input_buf[h][w +  3 - q + kKernel - 1][q] = input(j, h, w +  3);
-	    input_buf[h][w +  4 - q + kKernel - 1][q] = input(j, h, w +  4);
-	    input_buf[h][w +  5 - q + kKernel - 1][q] = input(j, h, w +  5);
-	    input_buf[h][w +  6 - q + kKernel - 1][q] = input(j, h, w +  6);
-	    input_buf[h][w +  7 - q + kKernel - 1][q] = input(j, h, w +  7);
-	    input_buf[h][w +  8 - q + kKernel - 1][q] = input(j, h, w +  8);
-	    input_buf[h][w +  9 - q + kKernel - 1][q] = input(j, h, w +  9);
-	    input_buf[h][w + 10 - q + kKernel - 1][q] = input(j, h, w + 10);
-	    input_buf[h][w + 11 - q + kKernel - 1][q] = input(j, h, w + 11);
+	    input_buf[h][w     - q + kKernel - 1][q] = input(j, h, w    );
+	    input_buf[h][w + 1 - q + kKernel - 1][q] = input(j, h, w + 1);
+	    input_buf[h][w + 2 - q + kKernel - 1][q] = input(j, h, w + 2);
+	    input_buf[h][w + 3 - q + kKernel - 1][q] = input(j, h, w + 3);
 	  }
 	}
       }
