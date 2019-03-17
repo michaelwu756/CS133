@@ -13,7 +13,8 @@ __kernel __attribute__((reqd_work_group_size(1, 1, 1)))
 void CnnKernel(__constant float* input, __constant float* weight,
                __constant float* bias, __global float* output) {
   float output_buf[kImSize][kImSize]
-  __attribute__((xcl_array_partition(cyclic, 8, 1)))
+  __attribute__((xcl_array_partition(cyclic, 16, 1)))
+  __attribute__((xcl_array_partition(cyclic, 2, 2)))
   ;
 
   float input_buf[kInImSize][kInImSize + kKernel - 1][kKernel] //buffer of input
@@ -62,7 +63,7 @@ void CnnKernel(__constant float* input, __constant float* weight,
 	//convolution loop
         conv:
 	__attribute__((xcl_pipeline_loop))
-	for (int w = 0; w < kImSize; w++) { //pipelined loop
+	for (int w = 0; w < kImSize; w+=2) { //pipelined loop
 	  float tmp0 = 0;
 	  float tmp1 = 0;
 	  float tmp2 = 0;
@@ -71,6 +72,14 @@ void CnnKernel(__constant float* input, __constant float* weight,
 	  float tmp5 = 0;
 	  float tmp6 = 0;
 	  float tmp7 = 0;
+	  float tmp8 = 0;
+	  float tmp9 = 0;
+	  float tmp10 = 0;
+	  float tmp11 = 0;
+	  float tmp12 = 0;
+	  float tmp13 = 0;
+	  float tmp14 = 0;
+	  float tmp15 = 0;
 	  for (int p = 0; p < kKernel; p++) {  // unrolled loop
 	    for (int q = 0; q < kKernel; q++) {  //unrolled loop
 	      tmp0 += //will be synthesized into tree reduction
@@ -89,16 +98,42 @@ void CnnKernel(__constant float* input, __constant float* weight,
 		weight_buf[p][q] * input_buf[h + 6 + p][w + kKernel - 1][q];
 	      tmp7 +=
 		weight_buf[p][q] * input_buf[h + 7 + p][w + kKernel - 1][q];
+	      tmp8 +=
+		weight_buf[p][q] * input_buf[h     + p][w + kKernel    ][q];
+	      tmp9 +=
+		weight_buf[p][q] * input_buf[h + 1 + p][w + kKernel    ][q];
+	      tmp10 +=
+		weight_buf[p][q] * input_buf[h + 2 + p][w + kKernel    ][q];
+	      tmp11 +=
+		weight_buf[p][q] * input_buf[h + 3 + p][w + kKernel    ][q];
+	      tmp12 +=
+		weight_buf[p][q] * input_buf[h + 4 + p][w + kKernel    ][q];
+	      tmp13 +=
+		weight_buf[p][q] * input_buf[h + 5 + p][w + kKernel    ][q];
+	      tmp14 +=
+		weight_buf[p][q] * input_buf[h + 6 + p][w + kKernel    ][q];
+	      tmp15 +=
+		weight_buf[p][q] * input_buf[h + 7 + p][w + kKernel    ][q];
+
 	    }
 	  }
-	  output_buf[h    ][w] += tmp0; //store reduction result
-	  output_buf[h + 1][w] += tmp1;
-	  output_buf[h + 2][w] += tmp2;
-	  output_buf[h + 3][w] += tmp3;
-	  output_buf[h + 4][w] += tmp4;
-	  output_buf[h + 5][w] += tmp5;
-	  output_buf[h + 6][w] += tmp6;
-	  output_buf[h + 7][w] += tmp7;
+	  output_buf[h    ][w    ] += tmp0; //store reduction result
+	  output_buf[h + 1][w    ] += tmp1;
+	  output_buf[h + 2][w    ] += tmp2;
+	  output_buf[h + 3][w    ] += tmp3;
+	  output_buf[h + 4][w    ] += tmp4;
+	  output_buf[h + 5][w    ] += tmp5;
+	  output_buf[h + 6][w    ] += tmp6;
+	  output_buf[h + 7][w    ] += tmp7;
+	  output_buf[h    ][w + 1] += tmp8;
+	  output_buf[h + 1][w + 1] += tmp9;
+	  output_buf[h + 2][w + 1] += tmp10;
+	  output_buf[h + 3][w + 1] += tmp11;
+	  output_buf[h + 4][w + 1] += tmp12;
+	  output_buf[h + 5][w + 1] += tmp13;
+	  output_buf[h + 6][w + 1] += tmp14;
+	  output_buf[h + 7][w + 1] += tmp15;
+
 	}
       }
     }
