@@ -31,7 +31,7 @@ cnn.$(TARGET).$(DSA).xclbin: cnn.$(TARGET).$(DSA).xo
 emconfig:emconfig.json
 
 emconfig.json:
-	emconfigutil --platform $(DEVICE) --od . 
+	emconfigutil --platform $(DEVICE) --od .
 
 
 dontrunme: cnn $(OPENCL_SOURCE) cnn.$(TARGET).$(DSA).xclbin
@@ -57,8 +57,10 @@ $(UID).tar.gz: $(REQUIRED_FILES)
 	@rm -rf $(UID)
 	@mkdir $(UID)
 	@cp $^ $(UID)
+	@$(foreach f,$(OPTIONAL_FILES),test -f $(f) && cp $(f) $(UID)/;exit 0)
 	tar czvf $(UID).tar.gz $(UID)
 	@rm -rf $(UID)
 
 check:
 	@tar tf $(UID).tar.gz $(addprefix $(UID)/, $(REQUIRED_FILES))
+	@$(foreach f,$(OPTIONAL_FILES),echo;echo -n "optional file \`$(UID)/$$(basename $(f))\` is ";tar tf $(UID).tar.gz $(UID)/$$(basename $(f)) >/dev/null 2>&1 || echo -n 'not ';echo 'in the tarball')
