@@ -153,11 +153,72 @@ in parallel. This would be the minimum number of DSP units necessary. In reality
 the memory and DSP units in order to allow for shorter critical paths and parallel accesses in order to reduce latency.
 That is why the shown resource utilization is much higher than the minimum.
 
+\section{Merlin Parallelization Strategy}
+
+My parallelization strategy followed the same structure as my SDAccel code. I used temporary buffers,
+pipelining, and flattening in the same places as my SDAccel implementation. I also used a pragma to indicate
+a false dependency in the convolution buffer so that the convolution step could be parallelized.
+This led to a reasonable speed. My calculation for the throughput is shown below.
+\[\frac{256^2\times 224^2\times 5^2\times 2\times 250}{4723995781\times 10^3}=8.7 \text{ GFlops}\]
+Since the sequential throughput was 11.5451 GFlops, this represents 0.75 times the performance of the sequential
+version. It is worse than the SDAccel code. However, this is still orders of magnitude better than the baseline
+Merlin code. I chose to parallelize the main convolution loop only 8 times instead of 16 times like in my
+SDAccel implementation in the interest of time. Synthesizing my code took much longer with Merlin. I found
+that most of my latency was again due to reading memory.
+
+\section{Merlin Resource Usage}
+
+The FPGA resource usage is shown in the following table.
+\begin{center}
+    \begin{tabular}{c|cccc}
+        Name & BRAM\_18K & DSP48E & FF & LUT\\
+        \hline
+        DSP & - & 7 & - & -\\
+        Expression & - & - & 0 & 37102\\
+        FIFO & - & - & - & -\\
+        Instance & 30 & 1041 & 118065 & 87934\\
+        Memory & 1076 & - & 0 & 0\\
+        Multiplexer & - & - & - & 10430\\
+        Register & 0 & - & 72290 & 22311\\
+        \hline
+        Total & 1106 & 1048 & 190355 & 157777\\
+        Available & 4320 & 6840 & 2364480 & 1182240\\
+        \hline
+        Utilization(\%) & 25 & 15 & 8 & 13
+    \end{tabular}
+\end{center}
+The BRAM\_18K resource has been used most in terms of percentage.
+
+\section{Merlin Optimization Analysis}
+
+Merlin seems to have flattened and pipelined the same loops as SDAccel. The SDAccel HLS
+report for this flow looks like my unoptimized version of the SDAccel code. The Merlin
+report indicates that certain sections are 4x, 5x, and 8x parallelized, which would speed
+up my performance by having parallel processing paths for the data to flow through. The
+pipelining improves performance by allowing the next iteration of a loop to begin while
+the previous iteration is still being processed so that the data flows through the processor
+without delay. Flattening improves performance by unrolling a loop entirely so that the whole
+loop is processed in parallel.
+
+\section{Comparison to SDAccel}
+
+In my implementations, I was able to achieve better performance with SDAccel. This was because
+making an efficient Merlin implementation required absurd amounts of synthesis time. Merlin
+allows for easier coding and less involved optimization strategies since it analyzes
+code for you, but this increases the computational power required to run it. SDAccel
+requires more explicit optimizing by the programmer, but it has a faster synthesis time.
+If I had enough time to run Merlin and SDAccel for long periods of time, perhaps my results
+would be different. In that case Merlin might be able to optimize better than I could by hand.
+This matched my expectations, as computing tools that operate at a higher level of abstraction
+typically perform slower than tools that operate at a lower level of abstraction.
+
 \section{Challenges}
 
 Some challenges I faced were the long synthesis times and understanding the structure of the FPGA memory. I was
 stuck with optimizing the load step for a long time since I thought that the local memory was lowering the initiation
 interval whenever I unrolled more than 4 times. Sometimes I would try to synthesize a loop that would be too large to fit
-on the FPGA and the synthesis would hang.
+on the FPGA and the synthesis would hang. I was tempted to run a 24x instance to develop faster, but I did not want to
+run out of AWS money. In the end my performance was limited by synthesis time and computing resources, as I
+did not have enough time or money to generate a very fast FGPA.
 
 \end{document}
