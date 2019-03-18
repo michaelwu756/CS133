@@ -58,7 +58,6 @@ void CnnKernel(__constant float* input, __constant float* weight,
           }
         }
       }
-      
       for (int h = 0; h < kImSize; h+=8) {
         //convolution loop
         conv:
@@ -114,7 +113,6 @@ void CnnKernel(__constant float* input, __constant float* weight,
                 weight_buf[p][q] * input_buf[h + 6 + p][w + kKernel    ][q];
               tmp15 +=
                 weight_buf[p][q] * input_buf[h + 7 + p][w + kKernel    ][q];
-
             }
           }
           output_buf[h    ][w    ] += tmp0; //store reduction result
@@ -133,7 +131,6 @@ void CnnKernel(__constant float* input, __constant float* weight,
           output_buf[h + 5][w + 1] += tmp13;
           output_buf[h + 6][w + 1] += tmp14;
           output_buf[h + 7][w + 1] += tmp15;
-
         }
       }
     }
